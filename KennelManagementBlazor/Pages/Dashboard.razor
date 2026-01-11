@@ -67,19 +67,22 @@
                     </div>
                 </div>
 
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M2 22V12a2 2 0 0 1 .71-1.53l8-6.7a2 2 0 0 1 2.58 0l8 6.7A2 2 0 0 1 22 12v10"/>
-                            <path d="M10 22V16a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v6"/>
-                            <path d="M2 22h20"/>
-                        </svg>
+                @if (AuthService.IsInRole("Admin", "Staff"))
+                {
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 22V12a2 2 0 0 1 .71-1.53l8-6.7a2 2 0 0 1 2.58 0l8 6.7A2 2 0 0 1 22 12v10"/>
+                                <path d="M10 22V16a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v6"/>
+                                <path d="M2 22h20"/>
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-value">@availableKennels</span>
+                            <span class="stat-label">Available Kennels</span>
+                        </div>
                     </div>
-                    <div class="stat-content">
-                        <span class="stat-value">@availableKennels</span>
-                        <span class="stat-label">Available Kennels</span>
-                    </div>
-                </div>
+                }
 
                 <div class="stat-card">
                     <div class="stat-icon">
@@ -175,11 +178,10 @@
                                     <span>Status</span>
                                 </div>
                                 @foreach (var booking in recentBookings.Take(5))
-{
-    <div class="table-row">
-                  <span class="cell-primary">@GetDogName(booking.DogId)</span>
-        <span>@GetKennelName(booking.KennelId)</span>
-                                        <span>@booking.KennelId</span>
+                                {
+                                    <div class="table-row">
+                                        <span class="cell-primary">@GetDogName(booking.DogId)</span>
+                                        <span>@GetKennelName(booking.KennelId)</span>
                                         <span>@booking.CheckInDate.ToString("MMM d")</span>
                                         <span>@booking.CheckOutDate.ToString("MMM d")</span>
                                         <span>
@@ -206,55 +208,58 @@
                     </div>
                 </div>
 
-                <!-- Kennel Status -->
-                <div class="section-card kennels-card">
-                    <div class="section-header">
-                        <div class="section-title">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M2 22V12a2 2 0 0 1 .71-1.53l8-6.7a2 2 0 0 1 2.58 0l8 6.7A2 2 0 0 1 22 12v10"/>
-                                <path d="M10 22V16a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v6"/>
-                                <path d="M2 22h20"/>
-                            </svg>
-                            <h2>Kennel Status</h2>
-                        </div>
-                        <a href="/kennels" class="view-all-link">
-                            View All
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="m9 18 6-6-6-6"/>
-                            </svg>
-                        </a>
-                    </div>
-                    <div class="section-body">
-                        @if (kennels.Any())
-                        {
-                            <div class="kennel-list">
-                                @foreach (var kennel in kennels.Take(6))
-                                {
-                                    <div class="kennel-item">
-                                        <div class="kennel-info">
-                                            <span class="kennel-name">@kennel.Name</span>
-                                            <span class="kennel-size">@kennel.Size size</span>
-                                        </div>
-                                        <span class="availability-badge @(kennel.IsAvailable ? "available" : "occupied")">
-                                            @(kennel.IsAvailable ? "Available" : "Occupied")
-                                        </span>
-                                    </div>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="empty-state">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                @if (AuthService.IsInRole("Admin", "Staff"))
+                {
+                    <!-- Kennel Status -->
+                    <div class="section-card kennels-card">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M2 22V12a2 2 0 0 1 .71-1.53l8-6.7a2 2 0 0 1 2.58 0l8 6.7A2 2 0 0 1 22 12v10"/>
                                     <path d="M10 22V16a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v6"/>
                                     <path d="M2 22h20"/>
                                 </svg>
-                                <p>No kennels found</p>
+                                <h2>Kennel Status</h2>
                             </div>
-                        }
+                            <a href="/kennels" class="view-all-link">
+                                View All
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="m9 18 6-6-6-6"/>
+                                </svg>
+                            </a>
+                        </div>
+                        <div class="section-body">
+                            @if (kennels.Any())
+                            {
+                                <div class="kennel-list">
+                                    @foreach (var kennel in kennels.Take(6))
+                                    {
+                                        <div class="kennel-item">
+                                            <div class="kennel-info">
+                                                <span class="kennel-name">@kennel.Name</span>
+                                                <span class="kennel-size">@kennel.Size size</span>
+                                            </div>
+                                            <span class="availability-badge @(kennel.IsAvailable ? "available" : "occupied")">
+                                                @(kennel.IsAvailable ? "Available" : "Occupied")
+                                            </span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="empty-state">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M2 22V12a2 2 0 0 1 .71-1.53l8-6.7a2 2 0 0 1 2.58 0l8 6.7A2 2 0 0 1 22 12v10"/>
+                                        <path d="M10 22V16a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v6"/>
+                                        <path d="M2 22h20"/>
+                                    </svg>
+                                    <p>No kennels found</p>
+                                </div>
+                            }
+                        </div>
                     </div>
-                </div>
+                }
             </div>
         </section>
 
@@ -289,22 +294,25 @@
                             </svg>
                         </a>
 
-                        <a href="/kennels" class="action-btn">
-                            <div class="action-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M2 22V12a2 2 0 0 1 .71-1.53l8-6.7a2 2 0 0 1 2.58 0l8 6.7A2 2 0 0 1 22 12v10"/>
-                                    <path d="M10 22V16a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v6"/>
-                                    <path d="M2 22h20"/>
+                        @if (AuthService.IsInRole("Admin", "Staff"))
+                        {
+                            <a href="/kennels" class="action-btn">
+                                <div class="action-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M2 22V12a2 2 0 0 1 .71-1.53l8-6.7a2 2 0 0 1 2.58 0l8 6.7A2 2 0 0 1 22 12v10"/>
+                                        <path d="M10 22V16a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v6"/>
+                                        <path d="M2 22h20"/>
+                                    </svg>
+                                </div>
+                                <div class="action-text">
+                                    <span class="action-title">Manage Kennels</span>
+                                    <span class="action-desc">Check availability and spaces</span>
+                                </div>
+                                <svg class="action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="m9 18 6-6-6-6"/>
                                 </svg>
-                            </div>
-                            <div class="action-text">
-                                <span class="action-title">Manage Kennels</span>
-                                <span class="action-desc">Check availability and spaces</span>
-                            </div>
-                            <svg class="action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="m9 18 6-6-6-6"/>
-                            </svg>
-                        </a>
+                            </a>
+                        }
 
                         <a href="/bookings" class="action-btn">
                             <div class="action-icon">
@@ -350,7 +358,6 @@
         </section>
     }
 </div>
-
 <style>
     @@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Quicksand:wght@500;600;700&display=swap');
 
