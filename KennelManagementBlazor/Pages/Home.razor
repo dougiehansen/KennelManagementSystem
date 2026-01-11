@@ -1,0 +1,1135 @@
+@page "/"
+@using KennelManagementBlazor.Services
+@using KennelManagementBlazor.Models
+@inject AuthService AuthService
+@inject ApiService ApiService
+
+<PageTitle>Home - Kennel Management</PageTitle>
+
+<AuthorizeView>
+    <Authorized>
+        <div class="home-page">
+            <!-- Hero Section -->
+            <section class="hero-section">
+                <div class="hero-content">
+                    <div class="hero-text">
+                        <span class="hero-greeting">Welcome back,</span>
+                        <h1 class="hero-name">@context.User.Identity?.Name</h1>
+                        <p class="hero-description">
+                            Your trusted companion for managing all things furry. Track dogs, manage kennels, 
+                            and handle bookings all in one place.
+                        </p>
+                        <div class="hero-actions">
+                            <a href="/dashboard" class="btn-primary-hero">
+                                <span>Go to Dashboard</span>
+                                <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M5 12h14"/>
+                                    <path d="m12 5 7 7-7 7"/>
+                                </svg>
+                            </a>
+                            <a href="/bookings" class="btn-secondary-hero">New Booking</a>
+                        </div>
+                    </div>
+                    <div class="hero-visual">
+                        <div class="hero-card">
+                            <div class="hero-icon-wrapper">
+                                <svg class="hero-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="11" cy="4" r="2"/>
+                                    <circle cx="18" cy="8" r="2"/>
+                                    <circle cx="20" cy="16" r="2"/>
+                                    <path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/>
+                                </svg>
+                            </div>
+                            <div class="role-badge @GetRoleClass()">
+                                <svg class="role-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    @if (AuthService.IsInRole("Admin"))
+                                    {
+                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                    }
+                                    else if (AuthService.IsInRole("Staff"))
+                                    {
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                    }
+                                    else
+                                    {
+                                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="12" cy="7" r="4"/>
+                                    }
+                                </svg>
+                                <span>@AuthService.UserRole</span>
+                            </div>
+                            <div class="hero-card-pattern"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Access Info Section -->
+            <section class="access-section">
+                @if (AuthService.IsInRole("Admin"))
+                {
+                    <div class="access-card">
+                        <div class="access-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                        </div>
+                        <div class="access-content">
+                            <h3>Administrator Access</h3>
+                            <p>You have full control over the system including user management, customer records, analytics, and all configuration settings.</p>
+                        </div>
+                    </div>
+                }
+                else if (AuthService.IsInRole("Staff"))
+                {
+                    <div class="access-card">
+                        <div class="access-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                        </div>
+                        <div class="access-content">
+                            <h3>Staff Access</h3>
+                            <p>You can manage dogs, kennels, bookings, and customer information. Check the dashboard for today's tasks and upcoming reservations.</p>
+                        </div>
+                    </div>
+                }
+                else if (AuthService.IsInRole("Customer"))
+                {
+                    <div class="access-card">
+                        <div class="access-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                        </div>
+                        <div class="access-content">
+                            <h3>Welcome, Pet Parent</h3>
+                            <p>View available kennels, register your furry friends, and manage your bookings. We're here to give your pets the care they deserve.</p>
+                        </div>
+                    </div>
+                }
+            </section>
+
+            <!-- Quick Actions Section -->
+            <section class="quick-actions">
+                <h2 class="section-title">Quick Actions</h2>
+                <div class="actions-grid">
+                    <a href="/dogs" class="action-card">
+                        <div class="action-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="4" r="2"/>
+                                <circle cx="18" cy="8" r="2"/>
+                                <circle cx="20" cy="16" r="2"/>
+                                <path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/>
+                            </svg>
+                        </div>
+                        <div class="action-content">
+                            <h3>Dogs</h3>
+                            <p>Manage dog registrations and profiles</p>
+                        </div>
+                        <svg class="action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m9 18 6-6-6-6"/>
+                        </svg>
+                    </a>
+
+                    <a href="/kennels" class="action-card">
+                        <div class="action-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 22V12a2 2 0 0 1 .71-1.53l8-6.7a2 2 0 0 1 2.58 0l8 6.7A2 2 0 0 1 22 12v10"/>
+                                <path d="M10 22V16a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v6"/>
+                                <path d="M2 22h20"/>
+                            </svg>
+                        </div>
+                        <div class="action-content">
+                            <h3>Kennels</h3>
+                            <p>View availability and manage spaces</p>
+                        </div>
+                        <svg class="action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m9 18 6-6-6-6"/>
+                        </svg>
+                    </a>
+
+                    <a href="/bookings" class="action-card">
+                        <div class="action-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M8 2v4"/>
+                                <path d="M16 2v4"/>
+                                <rect width="18" height="18" x="3" y="4" rx="2"/>
+                                <path d="M3 10h18"/>
+                            </svg>
+                        </div>
+                        <div class="action-content">
+                            <h3>Bookings</h3>
+                            <p>Schedule and manage reservations</p>
+                        </div>
+                        <svg class="action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m9 18 6-6-6-6"/>
+                        </svg>
+                    </a>
+
+                    @if (AuthService.IsInRole("Admin", "Staff"))
+                    {
+                        <a href="/customers" class="action-card">
+                            <div class="action-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                            </div>
+                            <div class="action-content">
+                                <h3>Customers</h3>
+                                <p>View and manage customer records</p>
+                            </div>
+                            <svg class="action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m9 18 6-6-6-6"/>
+                            </svg>
+                        </a>
+                    }
+                </div>
+            </section>
+        </div>
+    </Authorized>
+
+    <NotAuthorized>
+        <div class="landing-page">
+            <!-- Hero Section -->
+            <section class="landing-hero">
+                <div class="landing-content">
+                    <div class="landing-badge">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="4" r="2"/>
+                            <circle cx="18" cy="8" r="2"/>
+                            <circle cx="20" cy="16" r="2"/>
+                            <path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/>
+                        </svg>
+                        <span>Kennel Management</span>
+                    </div>
+                    <h1 class="landing-title">
+                        Where Every Pup<br/>
+                        <span class="title-highlight">Feels at Home</span>
+                    </h1>
+                    <p class="landing-description">
+                        The complete solution for managing your kennel business. 
+                        Track dogs, organize bookings, and delight pet parents with ease.
+                    </p>
+                    <a href="/login" class="btn-login-hero">
+                        <span>Sign In to Continue</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                            <polyline points="10 17 15 12 10 7"/>
+                            <line x1="15" x2="3" y1="12" y2="12"/>
+                        </svg>
+                    </a>
+                </div>
+
+            <div class="landing-visual">
+    <div class="visual-image">
+        <img src="/dogs.jpg" alt="Happy dog" />
+    </div>
+</div>
+            </section>
+
+            <!-- Features Section -->
+            <section class="features-section">
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="4" r="2"/>
+                                <circle cx="18" cy="8" r="2"/>
+                                <circle cx="20" cy="16" r="2"/>
+                                <path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/>
+                            </svg>
+                        </div>
+                        <h3>Dog Profiles</h3>
+                        <p>Complete records for every furry guest including medical info, preferences, and history.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M8 2v4"/>
+                                <path d="M16 2v4"/>
+                                <rect width="18" height="18" x="3" y="4" rx="2"/>
+                                <path d="M3 10h18"/>
+                            </svg>
+                        </div>
+                        <h3>Easy Booking</h3>
+                        <p>Streamlined reservation system with availability tracking and automated confirmations.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
+                                <path d="m9 12 2 2 4-4"/>
+                            </svg>
+                        </div>
+                        <h3>Safe & Secure</h3>
+                        <p>Role-based access ensures the right people have the right permissions at all times.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+<style>
+    @@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Quicksand:wght@500;600;700&display=swap');
+
+    /* ============================================
+       CSS Variables
+       ============================================ */
+    .home-page, .landing-page {
+        --warm-white: #FFFBF7;
+        --peach: #FFECD2;
+        --coral: #FF9A8B;
+        --coral-dark: #E8857A;
+        --amber: #FFB347;
+        --charcoal: #2D3436;
+        --gray-dark: #4A5568;
+        --gray: #636E72;
+        --gray-light: #A0AEC0;
+        --gray-lighter: #E2E8F0;
+        --gray-lightest: #F7FAFC;
+        --shadow: 0 4px 12px rgba(45, 52, 54, 0.08);
+        --shadow-md: 0 8px 24px rgba(45, 52, 54, 0.1);
+        --shadow-lg: 0 16px 48px rgba(45, 52, 54, 0.12);
+        --radius: 12px;
+        --radius-md: 16px;
+        --radius-lg: 24px;
+    }
+
+    /* ============================================
+       HOME PAGE (Authenticated)
+       ============================================ */
+
+     .visual-image {
+    width: 400px;
+    height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.visual-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 20px 40px rgba(45, 52, 54, 0.15));
+}  
+    .home-page {
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    /* Hero Section */
+    .hero-section {
+        margin-bottom: 2rem;
+    }
+
+    .hero-content {
+        display: grid;
+        grid-template-columns: 1fr 280px;
+        gap: 4rem;
+        align-items: center;
+        padding: 3rem;
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow);
+    }
+
+    .hero-greeting {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: var(--gray);
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin-bottom: 0.5rem;
+    }
+
+    .hero-name {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 2.75rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        margin: 0 0 1.25rem 0;
+        line-height: 1.1;
+    }
+
+    .hero-description {
+        font-size: 1.0625rem;
+        color: var(--gray);
+        line-height: 1.7;
+        margin-bottom: 2rem;
+        max-width: 480px;
+    }
+
+    .hero-actions {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-primary-hero {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem 1.75rem;
+        background: var(--charcoal);
+        color: white;
+        font-weight: 700;
+        font-size: 0.9375rem;
+        border-radius: var(--radius);
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary-hero:hover {
+        background: var(--gray-dark);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        color: white;
+    }
+
+    .btn-arrow {
+        width: 18px;
+        height: 18px;
+        transition: transform 0.2s ease;
+    }
+
+    .btn-primary-hero:hover .btn-arrow {
+        transform: translateX(4px);
+    }
+
+    .btn-secondary-hero {
+        display: inline-flex;
+        align-items: center;
+        padding: 1rem 1.75rem;
+        background: transparent;
+        color: var(--charcoal);
+        font-weight: 700;
+        font-size: 0.9375rem;
+        border: 2px solid var(--gray-lighter);
+        border-radius: var(--radius);
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .btn-secondary-hero:hover {
+        border-color: var(--charcoal);
+        background: var(--gray-lightest);
+        transform: translateY(-2px);
+    }
+
+    /* Hero Visual */
+    .hero-visual {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .hero-card {
+        width: 220px;
+        height: 260px;
+        background: var(--gray-lightest);
+        border-radius: var(--radius-lg);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.25rem;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .hero-card-pattern {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+            radial-gradient(circle at 20% 80%, var(--gray-lighter) 1px, transparent 1px),
+            radial-gradient(circle at 80% 20%, var(--gray-lighter) 1px, transparent 1px),
+            radial-gradient(circle at 40% 40%, var(--gray-lighter) 1px, transparent 1px),
+            radial-gradient(circle at 60% 60%, var(--gray-lighter) 1px, transparent 1px);
+        background-size: 50px 50px;
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    .hero-icon-wrapper {
+        width: 80px;
+        height: 80px;
+        background: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: var(--shadow);
+        position: relative;
+        z-index: 1;
+    }
+
+    .hero-icon {
+        width: 44px;
+        height: 44px;
+        color: var(--charcoal);
+    }
+
+    .role-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.625rem 1.25rem;
+        background: white;
+        border-radius: 100px;
+        font-weight: 700;
+        font-size: 0.8125rem;
+        color: var(--charcoal);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: var(--shadow);
+        position: relative;
+        z-index: 1;
+    }
+
+    .role-icon {
+        width: 16px;
+        height: 16px;
+        color: var(--gray);
+    }
+
+    /* Access Section */
+    .access-section {
+        margin-bottom: 2rem;
+    }
+
+    .access-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 1.5rem;
+        padding: 1.75rem;
+        border-radius: var(--radius-md);
+        background: white;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .access-icon {
+        width: 52px;
+        height: 52px;
+        background: var(--gray-lightest);
+        border-radius: var(--radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .access-icon svg {
+        width: 26px;
+        height: 26px;
+        color: var(--charcoal);
+    }
+
+    .access-content h3 {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        margin: 0 0 0.5rem 0;
+    }
+
+    .access-content p {
+        font-size: 0.9375rem;
+        color: var(--gray);
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    /* Quick Actions */
+    .quick-actions {
+        margin-bottom: 2rem;
+    }
+
+    .section-title {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        margin: 0 0 1.25rem 0;
+    }
+
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .action-card {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        padding: 1.5rem;
+        background: white;
+        border-radius: var(--radius-md);
+        text-decoration: none;
+        box-shadow: var(--shadow);
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+    }
+
+    .action-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+        border-color: var(--gray-lighter);
+    }
+
+    .action-icon {
+        width: 56px;
+        height: 56px;
+        background: var(--gray-lightest);
+        border-radius: var(--radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: all 0.2s ease;
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .action-card:hover .action-icon {
+        background: var(--charcoal);
+        border-color: var(--charcoal);
+    }
+
+    .action-icon svg {
+        width: 28px;
+        height: 28px;
+        color: var(--charcoal);
+        transition: color 0.2s ease;
+    }
+
+    .action-card:hover .action-icon svg {
+        color: white;
+    }
+
+    .action-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .action-content h3 {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 1.0625rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        margin: 0 0 0.25rem 0;
+    }
+
+    .action-content p {
+        font-size: 0.875rem;
+        color: var(--gray);
+        margin: 0;
+        line-height: 1.4;
+    }
+
+    .action-arrow {
+        width: 20px;
+        height: 20px;
+        color: var(--gray-light);
+        flex-shrink: 0;
+        transition: all 0.2s ease;
+    }
+
+    .action-card:hover .action-arrow {
+        color: var(--charcoal);
+        transform: translateX(4px);
+    }
+
+    /* ============================================
+       LANDING PAGE (Not Authenticated)
+       ============================================ */
+    .landing-page {
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    .landing-hero {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4rem;
+        align-items: center;
+        padding: 3rem 0;
+    }
+
+    .landing-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.625rem;
+        padding: 0.625rem 1.25rem;
+        background: white;
+        border-radius: 100px;
+        box-shadow: var(--shadow);
+        margin-bottom: 2rem;
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .landing-badge svg {
+        width: 20px;
+        height: 20px;
+        color: var(--charcoal);
+    }
+
+    .landing-badge span {
+        font-weight: 700;
+        font-size: 0.875rem;
+        color: var(--charcoal);
+    }
+
+    .landing-title {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 3.5rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        line-height: 1.1;
+        margin: 0 0 1.5rem 0;
+    }
+
+    .title-highlight {
+        color: var(--gray);
+    }
+
+    .landing-description {
+        font-size: 1.125rem;
+        color: var(--gray);
+        line-height: 1.7;
+        margin-bottom: 2.5rem;
+        max-width: 440px;
+    }
+
+    .btn-login-hero {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1.125rem 2rem;
+        background: var(--charcoal);
+        color: white;
+        font-weight: 700;
+        font-size: 1rem;
+        border-radius: var(--radius);
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .btn-login-hero:hover {
+        background: var(--gray-dark);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        color: white;
+    }
+
+    .btn-login-hero svg {
+        width: 20px;
+        height: 20px;
+        transition: transform 0.2s ease;
+    }
+
+    .btn-login-hero:hover svg {
+        transform: translateX(4px);
+    }
+
+    /* Visual Card */
+    .landing-visual {
+        display: flex;
+        justify-content: center;
+    }
+
+    .visual-card {
+        width: 340px;
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .visual-header {
+        padding: 1rem 1.25rem;
+        background: var(--gray-lightest);
+        border-bottom: 1px solid var(--gray-lighter);
+    }
+
+    .visual-dots {
+        display: flex;
+        gap: 8px;
+    }
+
+    .visual-dots span {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--gray-lighter);
+    }
+
+    .visual-content {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .visual-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        gap: 1rem;
+        color: var(--gray);
+        font-size: 0.875rem;
+    }
+
+    .spinner-small {
+        width: 24px;
+        height: 24px;
+        border: 2px solid var(--gray-lighter);
+        border-top-color: var(--charcoal);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .visual-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.125rem;
+        background: var(--gray-lightest);
+        border-radius: var(--radius);
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .visual-item-icon {
+        width: 48px;
+        height: 48px;
+        background: white;
+        border-radius: var(--radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .visual-item-icon svg {
+        width: 24px;
+        height: 24px;
+        color: var(--charcoal);
+    }
+
+    .visual-item-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .visual-item-label {
+        font-size: 0.75rem;
+        color: var(--gray);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .visual-item-value {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        line-height: 1.2;
+    }
+
+    /* Features Section */
+    .features-section {
+        padding: 2rem 0 3rem;
+    }
+
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+    }
+
+    .feature-card {
+        padding: 2rem;
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow);
+        text-align: center;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-md);
+        border-color: var(--gray-lighter);
+    }
+
+    .feature-icon {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 1.5rem;
+        background: var(--gray-lightest);
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .feature-icon svg {
+        width: 32px;
+        height: 32px;
+        color: var(--charcoal);
+    }
+
+    .feature-card h3 {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        margin: 0 0 0.75rem 0;
+    }
+
+    .feature-card p {
+        font-size: 0.9375rem;
+        color: var(--gray);
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    /* ============================================
+       Responsive Design
+       ============================================ */
+    @@media (max-width: 992px) {
+        .hero-content {
+            grid-template-columns: 1fr;
+            text-align: center;
+            gap: 2.5rem;
+        }
+
+        .hero-description {
+            max-width: none;
+        }
+
+        .hero-actions {
+            justify-content: center;
+        }
+
+        .hero-visual {
+            order: -1;
+        }
+
+        .landing-hero {
+            grid-template-columns: 1fr;
+            text-align: center;
+            gap: 3rem;
+        }
+
+        .landing-description {
+            max-width: none;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .landing-visual {
+            order: -1;
+        }
+
+        .features-grid {
+            grid-template-columns: 1fr;
+            max-width: 380px;
+            margin: 0 auto;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .hero-content {
+            padding: 2rem;
+        }
+
+        .hero-name {
+            font-size: 2rem;
+        }
+
+        .landing-title {
+            font-size: 2.5rem;
+        }
+
+        .visual-card {
+            width: 300px;
+        }
+
+        .actions-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .hero-content {
+            padding: 1.5rem;
+        }
+
+        .hero-card {
+            width: 180px;
+            height: 220px;
+        }
+
+        .hero-icon-wrapper {
+            width: 64px;
+            height: 64px;
+        }
+
+        .hero-icon {
+            width: 36px;
+            height: 36px;
+        }
+
+        .hero-actions {
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .btn-primary-hero,
+        .btn-secondary-hero {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .access-card {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .access-icon {
+            align-self: center;
+        }
+
+        .landing-title {
+            font-size: 2rem;
+        }
+
+        .visual-card {
+            width: 100%;
+            max-width: 300px;
+        }
+    }
+</style>
+
+@code {
+    private int dogsCount = 0;
+    private int availableKennelsCount = 0;
+    private int activeBookingsCount = 0;
+    private bool isLoadingStats = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPublicStats();
+    }
+
+    private async Task LoadPublicStats()
+    {
+        try
+        {
+            isLoadingStats = true;
+
+            // Try to load stats from API - these endpoints should be accessible without auth
+            // If they require auth, we'll catch the exception and show default values
+            var dogsTask = LoadDogsCount();
+            var kennelsTask = LoadKennelsCount();
+            var bookingsTask = LoadBookingsCount();
+
+            await Task.WhenAll(dogsTask, kennelsTask, bookingsTask);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading stats: {ex.Message}");
+            // Keep default values of 0 if API fails
+        }
+        finally
+        {
+            isLoadingStats = false;
+        }
+    }
+
+    private async Task LoadDogsCount()
+    {
+        try
+        {
+            var dogs = await ApiService.GetAsync<List<Dog>>("api/dogs");
+            dogsCount = dogs?.Count ?? 0;
+        }
+        catch
+        {
+            dogsCount = 0;
+        }
+    }
+
+    private async Task LoadKennelsCount()
+    {
+        try
+        {
+            var kennels = await ApiService.GetAsync<List<Kennel>>("api/kennels");
+            if (kennels != null)
+            {
+                availableKennelsCount = kennels.Count(k => k.IsAvailable);
+            }
+        }
+        catch
+        {
+            availableKennelsCount = 0;
+        }
+    }
+
+    private async Task LoadBookingsCount()
+    {
+        try
+        {
+            var bookings = await ApiService.GetAsync<List<Booking>>("api/bookings");
+            if (bookings != null)
+            {
+                // Count active bookings (Confirmed or Pending, with CheckOut date >= today)
+                var today = DateTime.Today;
+                activeBookingsCount = bookings.Count(b => 
+                    (b.Status == "Confirmed" || b.Status == "Pending") && 
+                    b.CheckOutDate >= today);
+            }
+        }
+        catch
+        {
+            activeBookingsCount = 0;
+        }
+    }
+
+    private string GetRoleClass()
+    {
+        if (AuthService.IsInRole("Admin")) return "admin";
+        if (AuthService.IsInRole("Staff")) return "staff";
+        return "customer";
+    }
+}

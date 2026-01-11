@@ -1,0 +1,1148 @@
+@page "/dashboard"
+@using Microsoft.AspNetCore.Authorization
+@using KennelManagementBlazor.Services
+@using KennelManagementBlazor.Models
+@inject ApiService ApiService
+@inject AuthService AuthService
+@inject IJSRuntime JSRuntime
+@attribute [Authorize]
+
+<PageTitle>Dashboard - Kennel Management</PageTitle>
+
+<div class="dashboard">
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="header-content">
+            <div class="header-text">
+                <h1>Dashboard</h1>
+                <p>Welcome back, @AuthService.UserEmail</p>
+            </div>
+            <div class="header-actions">
+                <a href="/bookings" class="btn-new-booking">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 5v14"/>
+                        <path d="M5 12h14"/>
+                    </svg>
+                    <span>New Booking</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    @if (isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading dashboard data...</p>
+        </div>
+    }
+    else if (errorMessage != null)
+    {
+        <div class="error-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="m15 9-6 6"/>
+                <path d="m9 9 6 6"/>
+            </svg>
+            <p>@errorMessage</p>
+        </div>
+    }
+    else
+    {
+        <!-- Stats Grid -->
+        <section class="stats-section">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="4" r="2"/>
+                            <circle cx="18" cy="8" r="2"/>
+                            <circle cx="20" cy="16" r="2"/>
+                            <path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value">@totalDogs</span>
+                        <span class="stat-label">Total Dogs</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 22V12a2 2 0 0 1 .71-1.53l8-6.7a2 2 0 0 1 2.58 0l8 6.7A2 2 0 0 1 22 12v10"/>
+                            <path d="M10 22V16a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v6"/>
+                            <path d="M2 22h20"/>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value">@availableKennels</span>
+                        <span class="stat-label">Available Kennels</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M8 2v4"/>
+                            <path d="M16 2v4"/>
+                            <rect width="18" height="18" x="3" y="4" rx="2"/>
+                            <path d="M3 10h18"/>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value">@activeBookings</span>
+                        <span class="stat-label">Active Bookings</span>
+                    </div>
+                </div>
+
+                @if (AuthService.IsInRole("Admin", "Staff"))
+                {
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-value">@totalCustomers</span>
+                            <span class="stat-label">Total Customers</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+
+        @if (AuthService.IsInRole("Admin", "Staff"))
+        {
+            <!-- Revenue Chart -->
+            <section class="chart-section">
+                <div class="section-card">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 3v18h18"/>
+                                <path d="m19 9-5 5-4-4-3 3"/>
+                            </svg>
+                            <h2>Revenue Overview</h2>
+                        </div>
+                        <div class="section-meta">
+                            <span class="meta-label">@DateTime.Now.ToString("MMMM yyyy")</span>
+                            <span class="meta-value">$@totalRevenue.ToString("N2")</span>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+            </section>
+        }
+
+        <!-- Main Content Grid -->
+        <section class="content-section">
+            <div class="content-grid">
+                <!-- Recent Bookings -->
+                <div class="section-card bookings-card">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M8 2v4"/>
+                                <path d="M16 2v4"/>
+                                <rect width="18" height="18" x="3" y="4" rx="2"/>
+                                <path d="M3 10h18"/>
+                            </svg>
+                            <h2>Recent Bookings</h2>
+                        </div>
+                        <a href="/bookings" class="view-all-link">
+                            View All
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m9 18 6-6-6-6"/>
+                            </svg>
+                        </a>
+                    </div>
+                    <div class="section-body">
+                        @if (recentBookings.Any())
+                        {
+                            <div class="bookings-table">
+                                <div class="table-header">
+                                    <span>Dog</span>
+                                    <span>Kennel</span>
+                                    <span>Check-In</span>
+                                    <span>Check-Out</span>
+                                    <span>Status</span>
+                                </div>
+                                @foreach (var booking in recentBookings.Take(5))
+                                {
+                                    <div class="table-row">
+                                        <span class="cell-primary">@booking.DogId</span>
+                                        <span>@booking.KennelId</span>
+                                        <span>@booking.CheckInDate.ToString("MMM d")</span>
+                                        <span>@booking.CheckOutDate.ToString("MMM d")</span>
+                                        <span>
+                                            <span class="status-badge status-@booking.Status.ToLower()">
+                                                @booking.Status
+                                            </span>
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="empty-state">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M8 2v4"/>
+                                    <path d="M16 2v4"/>
+                                    <rect width="18" height="18" x="3" y="4" rx="2"/>
+                                    <path d="M3 10h18"/>
+                                </svg>
+                                <p>No recent bookings</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Kennel Status -->
+                <div class="section-card kennels-card">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 22V12a2 2 0 0 1 .71-1.53l8-6.7a2 2 0 0 1 2.58 0l8 6.7A2 2 0 0 1 22 12v10"/>
+                                <path d="M10 22V16a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v6"/>
+                                <path d="M2 22h20"/>
+                            </svg>
+                            <h2>Kennel Status</h2>
+                        </div>
+                        <a href="/kennels" class="view-all-link">
+                            View All
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m9 18 6-6-6-6"/>
+                            </svg>
+                        </a>
+                    </div>
+                    <div class="section-body">
+                        @if (kennels.Any())
+                        {
+                            <div class="kennel-list">
+                                @foreach (var kennel in kennels.Take(6))
+                                {
+                                    <div class="kennel-item">
+                                        <div class="kennel-info">
+                                            <span class="kennel-name">@kennel.Name</span>
+                                            <span class="kennel-size">@kennel.Size size</span>
+                                        </div>
+                                        <span class="availability-badge @(kennel.IsAvailable ? "available" : "occupied")">
+                                            @(kennel.IsAvailable ? "Available" : "Occupied")
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="empty-state">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M2 22V12a2 2 0 0 1 .71-1.53l8-6.7a2 2 0 0 1 2.58 0l8 6.7A2 2 0 0 1 22 12v10"/>
+                                    <path d="M10 22V16a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v6"/>
+                                    <path d="M2 22h20"/>
+                                </svg>
+                                <p>No kennels found</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Actions -->
+        <section class="actions-section">
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>
+                        </svg>
+                        <h2>Quick Actions</h2>
+                    </div>
+                </div>
+                <div class="section-body">
+                    <div class="actions-grid">
+                        <a href="/dogs" class="action-btn">
+                            <div class="action-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="11" cy="4" r="2"/>
+                                    <circle cx="18" cy="8" r="2"/>
+                                    <circle cx="20" cy="16" r="2"/>
+                                    <path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/>
+                                </svg>
+                            </div>
+                            <div class="action-text">
+                                <span class="action-title">Manage Dogs</span>
+                                <span class="action-desc">View and edit dog profiles</span>
+                            </div>
+                            <svg class="action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m9 18 6-6-6-6"/>
+                            </svg>
+                        </a>
+
+                        <a href="/kennels" class="action-btn">
+                            <div class="action-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M2 22V12a2 2 0 0 1 .71-1.53l8-6.7a2 2 0 0 1 2.58 0l8 6.7A2 2 0 0 1 22 12v10"/>
+                                    <path d="M10 22V16a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v6"/>
+                                    <path d="M2 22h20"/>
+                                </svg>
+                            </div>
+                            <div class="action-text">
+                                <span class="action-title">Manage Kennels</span>
+                                <span class="action-desc">Check availability and spaces</span>
+                            </div>
+                            <svg class="action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m9 18 6-6-6-6"/>
+                            </svg>
+                        </a>
+
+                        <a href="/bookings" class="action-btn">
+                            <div class="action-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M8 2v4"/>
+                                    <path d="M16 2v4"/>
+                                    <rect width="18" height="18" x="3" y="4" rx="2"/>
+                                    <path d="M3 10h18"/>
+                                </svg>
+                            </div>
+                            <div class="action-text">
+                                <span class="action-title">Manage Bookings</span>
+                                <span class="action-desc">Schedule reservations</span>
+                            </div>
+                            <svg class="action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m9 18 6-6-6-6"/>
+                            </svg>
+                        </a>
+
+                        @if (AuthService.IsInRole("Admin", "Staff"))
+                        {
+                            <a href="/customers" class="action-btn">
+                                <div class="action-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                    </svg>
+                                </div>
+                                <div class="action-text">
+                                    <span class="action-title">Manage Customers</span>
+                                    <span class="action-desc">View customer records</span>
+                                </div>
+                                <svg class="action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="m9 18 6-6-6-6"/>
+                                </svg>
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </section>
+    }
+</div>
+
+<style>
+    @@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Quicksand:wght@500;600;700&display=swap');
+
+    .dashboard {
+        --charcoal: #2D3436;
+        --gray-dark: #4A5568;
+        --gray: #636E72;
+        --gray-light: #A0AEC0;
+        --gray-lighter: #E2E8F0;
+        --gray-lightest: #F7FAFC;
+        --white: #FFFFFF;
+        --success: #48BB78;
+        --success-light: #C6F6D5;
+        --warning: #ECC94B;
+        --warning-light: #FEFCBF;
+        --danger: #F56565;
+        --danger-light: #FED7D7;
+        --info: #4299E1;
+        --info-light: #BEE3F8;
+        --shadow: 0 4px 12px rgba(45, 52, 54, 0.08);
+        --shadow-md: 0 8px 24px rgba(45, 52, 54, 0.1);
+        --radius: 12px;
+        --radius-md: 16px;
+        --radius-lg: 20px;
+
+        max-width: 1200px;
+        margin: 0 auto;
+        font-family: 'Nunito', system-ui, sans-serif;
+    }
+
+    /* ============================================
+       Header
+       ============================================ */
+    .dashboard-header {
+        margin-bottom: 2rem;
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .header-text h1 {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        margin: 0 0 0.25rem 0;
+    }
+
+    .header-text p {
+        font-size: 0.9375rem;
+        color: var(--gray);
+        margin: 0;
+    }
+
+    .btn-new-booking {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.25rem;
+        background: var(--charcoal);
+        color: var(--white);
+        font-weight: 700;
+        font-size: 0.875rem;
+        border-radius: var(--radius);
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .btn-new-booking:hover {
+        background: var(--gray-dark);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        color: var(--white);
+    }
+
+    .btn-new-booking svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* ============================================
+       Loading & Error States
+       ============================================ */
+    .loading-state,
+    .error-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 4rem 2rem;
+        background: var(--white);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow);
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--gray-lighter);
+        border-top-color: var(--charcoal);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .loading-state p,
+    .error-state p {
+        margin-top: 1rem;
+        color: var(--gray);
+        font-weight: 600;
+    }
+
+    .error-state svg {
+        width: 48px;
+        height: 48px;
+        color: var(--danger);
+    }
+
+    /* ============================================
+       Stats Section
+       ============================================ */
+    .stats-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+    }
+
+    .stat-card {
+        background: var(--white);
+        border-radius: var(--radius-md);
+        padding: 1.5rem;
+        box-shadow: var(--shadow);
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+        border-color: var(--gray-lighter);
+    }
+
+    .stat-icon {
+        width: 56px;
+        height: 56px;
+        background: var(--gray-lightest);
+        border-radius: var(--radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .stat-icon svg {
+        width: 28px;
+        height: 28px;
+        color: var(--charcoal);
+    }
+
+    .stat-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .stat-value {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        line-height: 1.1;
+    }
+
+    .stat-label {
+        font-size: 0.8125rem;
+        color: var(--gray);
+        font-weight: 600;
+        margin-top: 0.25rem;
+    }
+
+    /* ============================================
+       Section Cards
+       ============================================ */
+    .section-card {
+        background: var(--white);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--gray-lighter);
+    }
+
+    .section-title {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .section-title svg {
+        width: 20px;
+        height: 20px;
+        color: var(--gray);
+    }
+
+    .section-title h2 {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        margin: 0;
+    }
+
+    .section-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .meta-label {
+        font-size: 0.8125rem;
+        color: var(--gray);
+        font-weight: 600;
+    }
+
+    .meta-value {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        padding: 0.375rem 0.875rem;
+        background: var(--gray-lightest);
+        border-radius: 100px;
+    }
+
+    .view-all-link {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        color: var(--gray);
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+    .view-all-link:hover {
+        color: var(--charcoal);
+    }
+
+    .view-all-link svg {
+        width: 16px;
+        height: 16px;
+        transition: transform 0.2s ease;
+    }
+
+    .view-all-link:hover svg {
+        transform: translateX(3px);
+    }
+
+    .section-body {
+        padding: 1.5rem;
+    }
+
+    /* ============================================
+       Chart Section
+       ============================================ */
+    .chart-section {
+        margin-bottom: 1.5rem;
+        width: 100%;
+    }
+
+    .chart-section .section-card {
+        width: 100%;
+    }
+
+    .chart-container {
+        padding: 1rem 1.5rem 1.5rem;
+        width: 100%;
+        height: 300px;
+        position: relative;
+    }
+
+    .chart-container canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    /* ============================================
+       Content Grid
+       ============================================ */
+    .content-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .content-grid {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 1.5rem;
+    }
+
+    /* Bookings Table */
+    .bookings-table {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .table-header,
+    .table-row {
+        display: grid;
+        grid-template-columns: 1fr 0.8fr 0.8fr 0.8fr 0.8fr;
+        gap: 1rem;
+        padding: 0.875rem 0;
+        align-items: center;
+    }
+
+    .table-header {
+        font-size: 0.6875rem;
+        font-weight: 700;
+        color: var(--gray);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid var(--gray-lighter);
+    }
+
+    .table-row {
+        font-size: 0.875rem;
+        color: var(--gray-dark);
+        border-bottom: 1px solid var(--gray-lighter);
+        transition: background 0.15s ease;
+    }
+
+    .table-row:last-child {
+        border-bottom: none;
+    }
+
+    .table-row:hover {
+        background: var(--gray-lightest);
+    }
+
+    .cell-primary {
+        font-weight: 700;
+        color: var(--charcoal);
+    }
+
+    .status-badge {
+        display: inline-flex;
+        padding: 0.25rem 0.625rem;
+        border-radius: 100px;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .status-confirmed {
+        background: var(--success-light);
+        color: #276749;
+    }
+
+    .status-pending {
+        background: var(--warning-light);
+        color: #975A16;
+    }
+
+    .status-completed {
+        background: var(--info-light);
+        color: #2B6CB0;
+    }
+
+    .status-cancelled {
+        background: var(--danger-light);
+        color: #C53030;
+    }
+
+    /* Kennel List */
+    .kennel-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.625rem;
+    }
+
+    .kennel-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.875rem 1rem;
+        background: var(--gray-lightest);
+        border-radius: var(--radius);
+        border: 1px solid var(--gray-lighter);
+        transition: all 0.15s ease;
+    }
+
+    .kennel-item:hover {
+        border-color: var(--gray-light);
+    }
+
+    .kennel-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .kennel-name {
+        font-weight: 700;
+        font-size: 0.875rem;
+        color: var(--charcoal);
+    }
+
+    .kennel-size {
+        font-size: 0.75rem;
+        color: var(--gray);
+        text-transform: capitalize;
+    }
+
+    .availability-badge {
+        font-size: 0.6875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        padding: 0.25rem 0.625rem;
+        border-radius: 100px;
+    }
+
+    .availability-badge.available {
+        background: var(--success-light);
+        color: #276749;
+    }
+
+    .availability-badge.occupied {
+        background: var(--danger-light);
+        color: #C53030;
+    }
+
+    /* Empty State */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        color: var(--gray-light);
+    }
+
+    .empty-state svg {
+        width: 48px;
+        height: 48px;
+        margin-bottom: 0.75rem;
+    }
+
+    .empty-state p {
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    /* ============================================
+       Actions Section
+       ============================================ */
+    .actions-section .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .action-btn {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem;
+        background: var(--gray-lightest);
+        border-radius: var(--radius);
+        text-decoration: none;
+        transition: all 0.2s ease;
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .action-btn:hover {
+        background: var(--white);
+        border-color: var(--charcoal);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+    }
+
+    .action-btn .action-icon {
+        width: 48px;
+        height: 48px;
+        background: var(--white);
+        border-radius: var(--radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        border: 1px solid var(--gray-lighter);
+        transition: all 0.2s ease;
+    }
+
+    .action-btn:hover .action-icon {
+        background: var(--charcoal);
+        border-color: var(--charcoal);
+    }
+
+    .action-btn .action-icon svg {
+        width: 24px;
+        height: 24px;
+        color: var(--charcoal);
+        transition: color 0.2s ease;
+    }
+
+    .action-btn:hover .action-icon svg {
+        color: var(--white);
+    }
+
+    .action-text {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .action-title {
+        font-weight: 700;
+        font-size: 0.9375rem;
+        color: var(--charcoal);
+    }
+
+    .action-desc {
+        font-size: 0.8125rem;
+        color: var(--gray);
+        margin-top: 0.125rem;
+    }
+
+    .action-arrow {
+        width: 20px;
+        height: 20px;
+        color: var(--gray-light);
+        flex-shrink: 0;
+        transition: all 0.2s ease;
+    }
+
+    .action-btn:hover .action-arrow {
+        color: var(--charcoal);
+        transform: translateX(4px);
+    }
+
+    /* ============================================
+       Responsive
+       ============================================ */
+    @@media (max-width: 1024px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .content-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .actions-section .actions-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .header-content {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .btn-new-booking {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .stat-card {
+            padding: 1.25rem;
+        }
+
+        .section-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .table-header,
+        .table-row {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+
+        .table-header span:nth-child(4),
+        .table-header span:nth-child(5),
+        .table-row span:nth-child(4),
+        .table-row span:nth-child(5) {
+            display: none;
+        }
+    }
+
+    @@media (max-width: 480px) {
+        .header-text h1 {
+            font-size: 1.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+        }
+
+        .section-body {
+            padding: 1rem;
+        }
+
+        .action-btn {
+            padding: 1rem;
+        }
+
+        .action-btn .action-icon {
+            width: 40px;
+            height: 40px;
+        }
+
+        .action-btn .action-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+    }
+</style>
+
+@code {
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    private int totalDogs = 0;
+    private int availableKennels = 0;
+    private int activeBookings = 0;
+    private int totalCustomers = 0;
+    private decimal totalRevenue = 0;
+
+    private List<Booking> recentBookings = new();
+    private List<Kennel> kennels = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadDashboardData();
+            
+            if (AuthService.IsInRole("Admin", "Staff"))
+            {
+                await Task.Delay(100);
+                await InitializeRevenueChart();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to load dashboard data. Please try again.";
+            Console.WriteLine($"Dashboard error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            var dogs = await ApiService.GetAsync<List<Dog>>("api/dogs");
+            totalDogs = dogs?.Count ?? 0;
+
+            kennels = await ApiService.GetAsync<List<Kennel>>("api/kennels") ?? new();
+            availableKennels = kennels.Count(k => k.IsAvailable);
+
+            recentBookings = await ApiService.GetAsync<List<Booking>>("api/bookings") ?? new();
+            activeBookings = recentBookings.Count(b => b.Status == "Pending" || b.Status == "Confirmed");
+            
+            totalRevenue = recentBookings
+                .Where(b => b.Status == "Confirmed" || b.Status == "Pending")
+                .Sum(b => b.TotalCost);
+
+            if (AuthService.IsInRole("Admin", "Staff"))
+            {
+                var customers = await ApiService.GetAsync<List<Customer>>("api/customers");
+                totalCustomers = customers?.Count ?? 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading dashboard data: {ex.Message}");
+            throw;
+        }
+    }
+
+    private async Task InitializeRevenueChart()
+    {
+        try
+        {
+            if (!recentBookings.Any())
+            {
+                return;
+            }
+
+            var confirmedOrPending = recentBookings
+                .Where(b => b.Status == "Confirmed" || b.Status == "Pending")
+                .ToList();
+
+            var currentMonth = DateTime.Now;
+            var daysInMonth = DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month);
+            
+            var dailyRevenue = new Dictionary<int, decimal>();
+            for (int day = 1; day <= daysInMonth; day++)
+            {
+                dailyRevenue[day] = 0;
+            }
+            
+            foreach (var booking in confirmedOrPending)
+            {
+                if (booking.CheckInDate.Year == currentMonth.Year && 
+                    booking.CheckInDate.Month == currentMonth.Month)
+                {
+                    dailyRevenue[booking.CheckInDate.Day] += booking.TotalCost;
+                }
+            }
+
+            var chartDataList = dailyRevenue
+                .OrderBy(x => x.Key)
+                .Select(x => new { Day = x.Key, Label = x.Key.ToString(), Revenue = x.Value })
+                .ToList();
+
+            var labels = chartDataList.Select(x => x.Label).ToArray();
+            var data = chartDataList.Select(x => (double)x.Revenue).ToArray();
+
+            var chartData = new
+            {
+                labels = labels,
+                datasets = new[]
+                {
+                    new
+                    {
+                        label = "Daily Revenue ($)",
+                        data = data,
+                        backgroundColor = "rgba(45, 52, 54, 0.08)",
+                        borderColor = "rgba(45, 52, 54, 0.8)",
+                        borderWidth = 2,
+                        fill = true,
+                        tension = 0.4,
+                        pointRadius = 3,
+                        pointBackgroundColor = "rgba(45, 52, 54, 1)",
+                        pointBorderColor = "#fff",
+                        pointBorderWidth = 2,
+                        pointHoverRadius = 6
+                    }
+                }
+            };
+
+            await JSRuntime.InvokeVoidAsync("initializeChart", "revenueChart", chartData);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error initializing chart: {ex.Message}");
+        }
+    }
+
+    private string GetStatusColor(string status)
+    {
+        return status.ToLower() switch
+        {
+            "confirmed" => "success",
+            "pending" => "warning",
+            "completed" => "info",
+            "cancelled" => "danger",
+            _ => "secondary"
+        };
+    }
+}

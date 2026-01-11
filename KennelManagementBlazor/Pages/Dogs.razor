@@ -1,0 +1,1275 @@
+@page "/dogs"
+@using Microsoft.AspNetCore.Authorization
+@using KennelManagementBlazor.Services
+@using KennelManagementBlazor.Models
+@using System.ComponentModel.DataAnnotations
+@inject ApiService ApiService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@attribute [Authorize]
+
+<PageTitle>Dogs - Kennel Management</PageTitle>
+
+<div class="dogs-page">
+    <!-- Header -->
+    <header class="page-header">
+        <div class="header-content">
+            <div class="header-text">
+                <h1>Dogs</h1>
+                <p>Manage dog information and registrations</p>
+            </div>
+            <button class="btn-add" @onclick="OpenCreateModal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 5v14"/>
+                    <path d="M5 12h14"/>
+                </svg>
+                <span>Register New Dog</span>
+            </button>
+        </div>
+    </header>
+
+    @if (isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading dogs...</p>
+        </div>
+    }
+    else if (errorMessage != null)
+    {
+        <div class="error-alert">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="m15 9-6 6"/>
+                <path d="m9 9 6 6"/>
+            </svg>
+            <span>@errorMessage</span>
+            <button class="alert-close" @onclick="() => errorMessage = null">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 6 6 18"/>
+                    <path d="m6 6 12 12"/>
+                </svg>
+            </button>
+        </div>
+    }
+    else
+    {
+        <!-- Filters -->
+        <section class="filters-section">
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label>Search by Name</label>
+                    <div class="input-with-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="m21 21-4.3-4.3"/>
+                        </svg>
+                        <input type="text" placeholder="Search dog name..." @bind="filterName" @bind:after="ApplyFilters" />
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Size</label>
+                    <select @bind="filterBreed" @bind:after="ApplyFilters">
+                        <option value="">All Sizes</option>
+                        <option value="Small">Small</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Large">Large</option>
+                        <option value="Extra Large">Extra Large</option>
+                    </select>
+                </div>
+                @if (AuthService.IsInRole("Admin", "Staff"))
+                {
+                    <div class="filter-group">
+                        <label>Owner</label>
+                        <select @bind="filterCustomerId" @bind:after="ApplyFilters">
+                            <option value="0">All Owners</option>
+                            @foreach (var customer in customers)
+                            {
+                                <option value="@customer.Id">@customer.Name</option>
+                            }
+                        </select>
+                    </div>
+                }
+            </div>
+            <div class="filters-footer">
+                <button class="btn-clear" @onclick="ClearFilters">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                        <path d="M21 3v5h-5"/>
+                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                        <path d="M8 16H3v5"/>
+                    </svg>
+                    <span>Clear Filters</span>
+                </button>
+                <span class="results-count">Showing @filteredDogs.Count of @dogs.Count dogs</span>
+            </div>
+        </section>
+
+        <!-- Dogs Table -->
+        <section class="table-section">
+            @if (filteredDogs.Any())
+            {
+                <div class="table-container">
+                    <div class="table-header">
+                        <span class="col-id">ID</span>
+                        <span class="col-name">Name</span>
+                        <span class="col-breed">Size</span>
+                        <span class="col-age">Age</span>
+                        @if (AuthService.IsInRole("Admin", "Staff"))
+                        {
+                            <span class="col-owner">Owner</span>
+                        }
+                        <span class="col-actions">Actions</span>
+                    </div>
+                    @foreach (var dog in filteredDogs)
+                    {
+                        <div class="table-row">
+                            <span class="col-id">
+                                <span class="id-badge">#@dog.Id</span>
+                            </span>
+                            <span class="col-name">
+                                <div class="dog-info">
+                                    <div class="dog-avatar">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="11" cy="4" r="2"/>
+                                            <circle cx="18" cy="8" r="2"/>
+                                            <circle cx="20" cy="16" r="2"/>
+                                            <path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/>
+                                        </svg>
+                                    </div>
+                                    <span class="dog-name">@dog.Name</span>
+                                </div>
+                            </span>
+                            <span class="col-breed">
+                                <span class="size-badge size-@dog.Breed.ToLower().Replace(" ", "-")">@dog.Breed</span>
+                            </span>
+                            <span class="col-age">@dog.Age years</span>
+                            @if (AuthService.IsInRole("Admin", "Staff"))
+                            {
+                                <span class="col-owner">
+                                    @if (dog.CustomerId > 0)
+                                    {
+                                        var customer = customers.FirstOrDefault(c => c.Id == dog.CustomerId);
+                                        if (customer != null)
+                                        {
+                                            <span class="owner-badge">@customer.Name</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="owner-badge unknown">Customer #@dog.CustomerId</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="owner-badge no-owner">No Owner</span>
+                                    }
+                                </span>
+                            }
+                            <span class="col-actions">
+                                <button class="btn-action btn-edit" title="Edit" @onclick="() => OpenEditModal(dog)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+                                        <path d="m15 5 4 4"></path>
+                                    </svg>
+                                    <span>Edit</span>
+                                </button>
+                                @if (AuthService.IsInRole("Admin"))
+                                {
+                                    <button class="btn-action btn-delete" title="Delete" @onclick="() => DeleteDog(dog.Id)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M3 6h18"></path>
+                                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                            <line x1="10" x2="10" y1="11" y2="17"></line>
+                                            <line x1="14" x2="14" y1="11" y2="17"></line>
+                                        </svg>
+                                        <span>Delete</span>
+                                    </button>
+                                }
+                            </span>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="4" r="2"/>
+                            <circle cx="18" cy="8" r="2"/>
+                            <circle cx="20" cy="16" r="2"/>
+                            <path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/>
+                        </svg>
+                    </div>
+                    <h3>No dogs found</h3>
+                    <p>Register your first dog to get started</p>
+                    <button class="btn-add" @onclick="OpenCreateModal">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 5v14"/>
+                            <path d="M5 12h14"/>
+                        </svg>
+                        <span>Register New Dog</span>
+                    </button>
+                </div>
+            }
+        </section>
+    }
+</div>
+
+<!-- Modal -->
+@if (showModal)
+{
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal" @onclick:stopPropagation="true">
+        <div class="modal-header">
+            <h2>
+                @if (isEditMode)
+                {
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="modal-icon">
+                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+                        <path d="m15 5 4 4"></path>
+                    </svg>
+                    <span>Edit Dog</span>
+                }
+                else
+                {
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="modal-icon">
+                        <path d="M12 5v14"></path>
+                        <path d="M5 12h14"></path>
+                    </svg>
+                    <span>Register New Dog</span>
+                }
+            </h2>
+            <button class="modal-close" @onclick="CloseModal">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 6 6 18"></path>
+                    <path d="m6 6 12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <EditForm Model="@dogForm" OnValidSubmit="SaveDog">
+                <DataAnnotationsValidator />
+                
+                <div class="form-group">
+                    <label>Dog Name</label>
+                    <InputText class="form-input" @bind-Value="dogForm.Name" placeholder="Max, Bella, Charlie..." />
+                    <ValidationMessage For="@(() => dogForm.Name)" />
+                </div>
+
+                <div class="form-group">
+                    <label>Dog Size</label>
+                    <select class="form-input" @bind="dogForm.Breed">
+                        <option value="">Select dog size...</option>
+                        <option value="Small">Small (up to 15 lbs)</option>
+                        <option value="Medium">Medium (15-40 lbs)</option>
+                        <option value="Large">Large (40-80 lbs)</option>
+                        <option value="Extra Large">Extra Large (80+ lbs)</option>
+                    </select>
+                    <ValidationMessage For="@(() => dogForm.Breed)" />
+                </div>
+
+                <div class="form-group">
+                    <label>Age (years)</label>
+                    <InputNumber class="form-input" @bind-Value="dogForm.Age" />
+                    <ValidationMessage For="@(() => dogForm.Age)" />
+                </div>
+
+                @if (AuthService.IsInRole("Admin", "Staff"))
+                {
+                    <div class="form-group">
+                        <label>Owner</label>
+                        <select class="form-input" @bind="dogForm.CustomerId">
+                            <option value="0">Select an owner...</option>
+                            @foreach (var customer in customers)
+                            {
+                                <option value="@customer.Id">@customer.Name (@customer.Email)</option>
+                            }
+                        </select>
+                        <ValidationMessage For="@(() => dogForm.CustomerId)" />
+                    </div>
+                }
+
+                @if (modalErrorMessage != null)
+                {
+                    <div class="form-error">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="m15 9-6 6"/>
+                            <path d="m9 9 6 6"/>
+                        </svg>
+                        <span>@modalErrorMessage</span>
+                    </div>
+                }
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" @onclick="CloseModal">Cancel</button>
+                    <button type="submit" class="btn-primary" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="btn-spinner"></span>
+                        }
+                        <span>@(isEditMode ? "Update" : "Register") Dog</span>
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+        </div>
+    </div>
+}
+
+<style>
+    @@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Quicksand:wght@500;600;700&display=swap');
+
+    .dogs-page {
+        --charcoal: #2D3436;
+        --gray-dark: #4A5568;
+        --gray: #636E72;
+        --gray-light: #A0AEC0;
+        --gray-lighter: #E2E8F0;
+        --gray-lightest: #F7FAFC;
+        --white: #FFFFFF;
+        --danger: #E53E3E;
+        --danger-light: #FED7D7;
+        --warning-light: #FEFCBF;
+        --success-light: #C6F6D5;
+        --info-light: #BEE3F8;
+        --shadow: 0 4px 12px rgba(45, 52, 54, 0.08);
+        --shadow-md: 0 8px 24px rgba(45, 52, 54, 0.12);
+        --radius: 12px;
+        --radius-md: 16px;
+        --radius-lg: 20px;
+
+        max-width: 1200px;
+        margin: 0 auto;
+        font-family: 'Nunito', sans-serif;
+    }
+
+    /* Header */
+    .page-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .header-text h1 {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        margin: 0 0 0.25rem 0;
+    }
+
+    .header-text p {
+        font-size: 0.9375rem;
+        color: var(--gray);
+        margin: 0;
+    }
+
+    .btn-add {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.25rem;
+        background: var(--charcoal);
+        color: var(--white);
+        font-family: 'Nunito', sans-serif;
+        font-weight: 700;
+        font-size: 0.875rem;
+        border: none;
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-add:hover {
+        background: var(--gray-dark);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-add svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Loading & Error States */
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 4rem 2rem;
+        background: var(--white);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow);
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--gray-lighter);
+        border-top-color: var(--charcoal);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .loading-state p {
+        margin-top: 1rem;
+        color: var(--gray);
+        font-weight: 600;
+    }
+
+    .error-alert {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+        background: var(--danger-light);
+        border-radius: var(--radius);
+        margin-bottom: 1.5rem;
+        color: #C53030;
+        font-weight: 600;
+    }
+
+    .error-alert svg {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+    }
+
+    .error-alert span {
+        flex: 1;
+    }
+
+    .alert-close {
+        background: none;
+        border: none;
+        padding: 0.25rem;
+        cursor: pointer;
+        color: #C53030;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+    }
+
+    .alert-close:hover {
+        opacity: 1;
+    }
+
+    .alert-close svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Filters */
+    .filters-section {
+        background: var(--white);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        box-shadow: var(--shadow);
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .filters-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .filter-group label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--gray);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .input-with-icon {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .input-with-icon svg {
+        position: absolute;
+        left: 1rem;
+        width: 16px;
+        height: 16px;
+        color: var(--gray-light);
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .input-with-icon input {
+        padding-left: 2.75rem !important;
+    }
+
+    .filter-group input,
+    .filter-group select {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        font-family: 'Nunito', sans-serif;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--charcoal);
+        background: var(--gray-lightest);
+        border: 1px solid var(--gray-lighter);
+        border-radius: var(--radius);
+        transition: all 0.2s ease;
+    }
+
+    .filter-group input:focus,
+    .filter-group select:focus {
+        outline: none;
+        border-color: var(--charcoal);
+        background: var(--white);
+    }
+
+    .filter-group input::placeholder {
+        color: var(--gray-light);
+    }
+
+    .filters-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--gray-lighter);
+    }
+
+    .btn-clear {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.875rem;
+        background: var(--gray-lightest);
+        color: var(--gray-dark);
+        font-family: 'Nunito', sans-serif;
+        font-weight: 600;
+        font-size: 0.8125rem;
+        border: 1px solid var(--gray-lighter);
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-clear:hover {
+        background: var(--white);
+        border-color: var(--charcoal);
+    }
+
+    .btn-clear svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .results-count {
+        font-size: 0.8125rem;
+        color: var(--gray);
+        font-weight: 600;
+    }
+
+    /* Table */
+    .table-section {
+        background: var(--white);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .table-header,
+    .table-row {
+        display: grid;
+        grid-template-columns: 70px 1fr 120px 100px 150px 160px;
+        gap: 1rem;
+        padding: 1rem 1.5rem;
+        align-items: center;
+    }
+
+    .table-header {
+        background: var(--gray-lightest);
+        border-bottom: 1px solid var(--gray-lighter);
+        font-size: 0.6875rem;
+        font-weight: 700;
+        color: var(--gray);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .table-row {
+        border-bottom: 1px solid var(--gray-lighter);
+        transition: background 0.15s ease;
+    }
+
+    .table-row:last-child {
+        border-bottom: none;
+    }
+
+    .table-row:hover {
+        background: var(--gray-lightest);
+    }
+
+    .id-badge {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--gray);
+        background: var(--gray-lightest);
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+    }
+
+    .dog-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .dog-avatar {
+        width: 40px;
+        height: 40px;
+        background: var(--gray-lightest);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .dog-avatar svg {
+        width: 22px;
+        height: 22px;
+        color: var(--gray);
+    }
+
+    .dog-name {
+        font-weight: 700;
+        color: var(--charcoal);
+    }
+
+    .size-badge {
+        display: inline-flex;
+        padding: 0.25rem 0.625rem;
+        border-radius: 100px;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        background: var(--gray-lightest);
+        color: var(--gray-dark);
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .size-small { background: var(--success-light); color: #276749; border-color: transparent; }
+    .size-medium { background: var(--info-light); color: #2B6CB0; border-color: transparent; }
+    .size-large { background: var(--warning-light); color: #975A16; border-color: transparent; }
+    .size-extra-large { background: var(--danger-light); color: #C53030; border-color: transparent; }
+
+    .col-age {
+        font-weight: 600;
+        color: var(--gray-dark);
+    }
+
+    .owner-badge {
+        display: inline-flex;
+        padding: 0.25rem 0.625rem;
+        border-radius: 100px;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        background: var(--gray-lightest);
+        color: var(--charcoal);
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .owner-badge.unknown {
+        background: var(--gray-lighter);
+        color: var(--gray);
+    }
+
+    .owner-badge.no-owner {
+        background: var(--warning-light);
+        color: #975A16;
+        border-color: transparent;
+    }
+
+    .col-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.5rem 0.75rem;
+        font-family: 'Nunito', sans-serif;
+        font-size: 0.75rem;
+        font-weight: 700;
+        background: var(--gray-lightest);
+        border: 1px solid var(--gray-lighter);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: var(--gray-dark);
+    }
+
+    .btn-action svg {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+    }
+
+    .btn-action span {
+        line-height: 1;
+    }
+
+    .btn-edit:hover {
+        background: var(--charcoal);
+        border-color: var(--charcoal);
+        color: var(--white);
+    }
+
+    .btn-delete:hover {
+        background: var(--danger);
+        border-color: var(--danger);
+        color: var(--white);
+    }
+
+    /* Empty State */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 4rem 2rem;
+        text-align: center;
+    }
+
+    .empty-icon {
+        width: 80px;
+        height: 80px;
+        background: var(--gray-lightest);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .empty-icon svg {
+        width: 40px;
+        height: 40px;
+        color: var(--gray-light);
+    }
+
+    .empty-state h3 {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        margin: 0 0 0.5rem 0;
+    }
+
+    .empty-state p {
+        font-size: 0.9375rem;
+        color: var(--gray);
+        margin: 0 0 1.5rem 0;
+    }
+
+    /* Modal */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .modal {
+        position: relative;
+        width: 100%;
+        max-width: 480px;
+        max-height: calc(100vh - 2rem);
+        background: #FFFFFF;
+        border-radius: var(--radius-lg);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--gray-lighter);
+        background: #FFFFFF;
+        flex-shrink: 0;
+    }
+
+    .modal-header h2 {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-family: 'Quicksand', sans-serif;
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        margin: 0;
+        white-space: nowrap;
+    }
+
+    .modal-header h2 svg,
+    .modal-header h2 .modal-icon {
+        width: 20px;
+        height: 20px;
+        min-width: 20px;
+        min-height: 20px;
+        color: var(--gray);
+        flex-shrink: 0;
+    }
+
+    .modal-close {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--gray-lightest);
+        border: none;
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+    }
+
+    .modal-close svg {
+        width: 18px;
+        height: 18px;
+        color: var(--gray);
+    }
+
+    .modal-close:hover {
+        background: var(--gray-lighter);
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+        overflow-y: auto;
+        background: #FFFFFF;
+    }
+
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--gray);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        font-family: 'Nunito', sans-serif;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--charcoal);
+        background: var(--white);
+        border: 2px solid var(--gray-lighter);
+        border-radius: var(--radius);
+        transition: all 0.2s ease;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--charcoal);
+    }
+
+    .form-input::placeholder {
+        color: var(--gray-light);
+    }
+
+    .validation-message {
+        font-size: 0.8125rem;
+        color: var(--danger);
+        margin-top: 0.375rem;
+        font-weight: 600;
+    }
+
+    .form-error {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        padding: 0.875rem 1rem;
+        background: var(--danger-light);
+        border-radius: var(--radius);
+        margin-bottom: 1.25rem;
+        color: #C53030;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .form-error svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+    }
+
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+    }
+
+    .btn-secondary {
+        padding: 0.75rem 1.25rem;
+        background: var(--gray-lightest);
+        color: var(--gray-dark);
+        font-family: 'Nunito', sans-serif;
+        font-weight: 700;
+        font-size: 0.875rem;
+        border: 1px solid var(--gray-lighter);
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+        background: var(--white);
+        border-color: var(--charcoal);
+    }
+
+    .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.25rem;
+        background: var(--charcoal);
+        color: #FFFFFF !important;
+        font-family: 'Nunito', sans-serif;
+        font-weight: 700;
+        font-size: 0.875rem;
+        border: none;
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary span {
+        color: #FFFFFF !important;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: var(--gray-dark);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    .btn-spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    /* Responsive */
+    @@media (max-width: 1024px) {
+        .filters-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .table-header,
+        .table-row {
+            grid-template-columns: 60px 1fr 120px 100px 120px;
+        }
+
+        .col-owner {
+            display: none;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .header-content {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .btn-add {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .filters-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .table-header,
+        .table-row {
+            grid-template-columns: 1fr 100px 100px;
+        }
+
+        .col-id,
+        .col-breed {
+            display: none;
+        }
+
+        .modal {
+            max-width: calc(100% - 2rem);
+        }
+    }
+</style>
+
+@code {
+    [Inject] private AuthService AuthService { get; set; } = default!;
+
+    private List<Dog> dogs = new();
+    private List<Dog> filteredDogs = new();
+    private List<Customer> customers = new();
+    private bool isLoading = true;
+    private string? errorMessage;
+    private string? modalErrorMessage;
+
+    private string filterName = "";
+    private string filterBreed = "";
+    private int filterCustomerId = 0;
+
+    private bool showModal = false;
+    private bool isEditMode = false;
+    private bool isSaving = false;
+    private DogForm dogForm = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+            
+            await LoadDogs();
+            
+            if (AuthService.IsInRole("Admin", "Staff"))
+            {
+                await LoadCustomers();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to load data. Please try again.";
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadDogs()
+    {
+        dogs = await ApiService.GetAsync<List<Dog>>("api/dogs") ?? new();
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        var filtered = dogs.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(filterName))
+        {
+            filtered = filtered.Where(d => d.Name.Contains(filterName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrEmpty(filterBreed))
+        {
+            filtered = filtered.Where(d => d.Breed == filterBreed);
+        }
+
+        if (filterCustomerId > 0)
+        {
+            filtered = filtered.Where(d => d.CustomerId == filterCustomerId);
+        }
+
+        filteredDogs = filtered.ToList();
+    }
+
+    private void ClearFilters()
+    {
+        filterName = "";
+        filterBreed = "";
+        filterCustomerId = 0;
+        ApplyFilters();
+    }
+
+    private async Task LoadCustomers()
+    {
+        customers = await ApiService.GetAsync<List<Customer>>("api/customers") ?? new();
+    }
+
+    private void OpenCreateModal()
+    {
+        isEditMode = false;
+        dogForm = new DogForm();
+        modalErrorMessage = null;
+        showModal = true;
+    }
+
+    private void OpenEditModal(Dog dog)
+    {
+        isEditMode = true;
+        dogForm = new DogForm
+        {
+            Id = dog.Id,
+            Name = dog.Name,
+            Breed = dog.Breed,
+            Age = dog.Age,
+            CustomerId = dog.CustomerId
+        };
+        modalErrorMessage = null;
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        modalErrorMessage = null;
+    }
+
+    private async Task SaveDog()
+    {
+        try
+        {
+            isSaving = true;
+            modalErrorMessage = null;
+
+            var dog = new Dog
+            {
+                Id = dogForm.Id,
+                Name = dogForm.Name,
+                Breed = dogForm.Breed,
+                Age = dogForm.Age,
+                CustomerId = dogForm.CustomerId
+            };
+
+            HttpResponseMessage response;
+            if (isEditMode)
+            {
+                response = await ApiService.PutAsync($"api/dogs/{dog.Id}", dog);
+            }
+            else
+            {
+                response = await ApiService.PostAsync("api/dogs", dog);
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadDogs();
+                CloseModal();
+            }
+            else
+            {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                modalErrorMessage = $"Failed to {(isEditMode ? "update" : "register")} dog.";
+                Console.WriteLine($"Error: {errorBody}");
+            }
+        }
+        catch (Exception ex)
+        {
+            modalErrorMessage = $"Error: {ex.Message}";
+            Console.WriteLine($"Exception: {ex}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task DeleteDog(int id)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this dog?"))
+        {
+            try
+            {
+                var response = await ApiService.DeleteAsync($"api/dogs/{id}");
+                if (response.IsSuccessStatusCode)
+                {
+                    await LoadDogs();
+                }
+                else
+                {
+                    errorMessage = "Failed to delete dog.";
+                }
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error deleting dog: {ex.Message}";
+            }
+        }
+    }
+
+    public class DogForm
+    {
+        public int Id { get; set; }
+
+        [Required(ErrorMessage = "Dog name is required")]
+        [StringLength(50, ErrorMessage = "Name must be less than 50 characters")]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Size is required")]
+        [StringLength(50, ErrorMessage = "Size must be less than 50 characters")]
+        public string Breed { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Age is required")]
+        [Range(0, 30, ErrorMessage = "Age must be between 0 and 30 years")]
+        public int Age { get; set; }
+
+        public int? CustomerId { get; set; }
+    }
+}

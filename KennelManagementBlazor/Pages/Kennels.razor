@@ -1,0 +1,1384 @@
+@page "/kennels"
+@using Microsoft.AspNetCore.Authorization
+@using KennelManagementBlazor.Services
+@using KennelManagementBlazor.Models
+@using System.ComponentModel.DataAnnotations
+@inject ApiService ApiService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@attribute [Authorize(Roles = "Admin,Staff")]
+
+<PageTitle>Kennels - Kennel Management</PageTitle>
+
+<div class="kennels-page">
+    <!-- Header -->
+    <header class="page-header">
+        <div class="header-content">
+            <div class="header-text">
+                <h1>Kennels</h1>
+                <p>Manage kennel facilities and availability</p>
+            </div>
+            <button class="btn-add" @onclick="OpenCreateModal">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 5v14"></path>
+                    <path d="M5 12h14"></path>
+                </svg>
+                <span>Add New Kennel</span>
+            </button>
+        </div>
+    </header>
+
+    @if (isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading kennels...</p>
+        </div>
+    }
+    else if (errorMessage != null)
+    {
+        <div class="error-alert">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="m15 9-6 6"></path>
+                <path d="m9 9 6 6"></path>
+            </svg>
+            <span>@errorMessage</span>
+            <button class="alert-close" @onclick="() => errorMessage = null">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 6 6 18"></path>
+                    <path d="m6 6 12 12"></path>
+                </svg>
+            </button>
+        </div>
+    }
+    else
+    {
+        <!-- Stats Cards -->
+        <section class="stats-section">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon available">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 6 9 17l-5-5"></path>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value">@kennels.Count(k => k.IsAvailable)</span>
+                        <span class="stat-label">Available</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon occupied">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value">@kennels.Count(k => !k.IsAvailable)</span>
+                        <span class="stat-label">Occupied</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon total">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 22V12a2 2 0 0 1 .71-1.53l8-6.7a2 2 0 0 1 2.58 0l8 6.7A2 2 0 0 1 22 12v10"></path>
+                            <path d="M10 22V16a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v6"></path>
+                            <path d="M2 22h20"></path>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value">@kennels.Count</span>
+                        <span class="stat-label">Total Kennels</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filters -->
+        <section class="filters-section">
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label>Search by Name</label>
+                    <div class="input-with-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.3-4.3"></path>
+                        </svg>
+                        <input type="text" placeholder="Search kennel..." @bind="filterName" @bind:after="ApplyFilters" />
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Size</label>
+                    <select @bind="filterSize" @bind:after="ApplyFilters">
+                        <option value="">All Sizes</option>
+                        <option value="Small">Small</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Large">Large</option>
+                        <option value="Extra Large">Extra Large</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Availability</label>
+                    <select @bind="filterAvailability" @bind:after="ApplyFilters">
+                        <option value="">All</option>
+                        <option value="available">Available Only</option>
+                        <option value="occupied">Occupied Only</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filters-footer">
+                <button class="btn-clear" @onclick="ClearFilters">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                        <path d="M21 3v5h-5"></path>
+                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                        <path d="M8 16H3v5"></path>
+                    </svg>
+                    <span>Clear Filters</span>
+                </button>
+                <span class="results-count">Showing @filteredKennels.Count of @kennels.Count kennels</span>
+            </div>
+        </section>
+
+        <!-- Kennels Grid -->
+        <section class="kennels-grid-section">
+            @if (filteredKennels.Any())
+            {
+                <div class="kennels-grid">
+                    @foreach (var kennel in filteredKennels)
+                    {
+                        <div class="kennel-card @(kennel.IsAvailable ? "is-available" : "is-occupied")">
+                            <div class="kennel-header">
+                                <div class="kennel-title">
+                                    <div class="kennel-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M2 22V12a2 2 0 0 1 .71-1.53l8-6.7a2 2 0 0 1 2.58 0l8 6.7A2 2 0 0 1 22 12v10"></path>
+                                            <path d="M10 22V16a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v6"></path>
+                                            <path d="M2 22h20"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="kennel-name-wrap">
+                                        <h3>@kennel.Name</h3>
+                                        <span class="kennel-id">#@kennel.Id</span>
+                                    </div>
+                                </div>
+                                <span class="status-badge @(kennel.IsAvailable ? "available" : "occupied")">
+                                    @if (kennel.IsAvailable)
+                                    {
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M20 6 9 17l-5-5"></path>
+                                        </svg>
+                                    }
+                                    else
+                                    {
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                        </svg>
+                                    }
+                                    <span>@(kennel.IsAvailable ? "Available" : "Occupied")</span>
+                                </span>
+                            </div>
+                            
+                            <div class="kennel-details">
+                                <div class="detail-row">
+                                    <span class="detail-label">Size</span>
+                                    <span class="detail-value size-badge size-@kennel.Size.ToLower().Replace(" ", "-")">@kennel.Size</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Price/Day</span>
+                                    <span class="detail-value price">$@kennel.PricePerDay.ToString("N2")</span>
+                                </div>
+                            </div>
+
+                            <div class="kennel-actions">
+                                <button class="btn-action btn-edit" @onclick="() => OpenEditModal(kennel)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+                                        <path d="m15 5 4 4"></path>
+                                    </svg>
+                                    <span>Edit</span>
+                                </button>
+                                @if (AuthService.IsInRole("Admin"))
+                                {
+                                    <button class="btn-action btn-delete" @onclick="() => DeleteKennel(kennel.Id)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M3 6h18"></path>
+                                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                            <line x1="10" x2="10" y1="11" y2="17"></line>
+                                            <line x1="14" x2="14" y1="11" y2="17"></line>
+                                        </svg>
+                                        <span>Delete</span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 22V12a2 2 0 0 1 .71-1.53l8-6.7a2 2 0 0 1 2.58 0l8 6.7A2 2 0 0 1 22 12v10"></path>
+                            <path d="M10 22V16a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v6"></path>
+                            <path d="M2 22h20"></path>
+                        </svg>
+                    </div>
+                    <h3>No kennels found</h3>
+                    <p>Add your first kennel to get started</p>
+                    <button class="btn-add" @onclick="OpenCreateModal">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 5v14"></path>
+                            <path d="M5 12h14"></path>
+                        </svg>
+                        <span>Add New Kennel</span>
+                    </button>
+                </div>
+            }
+        </section>
+    }
+</div>
+
+<!-- Modal -->
+@if (showModal)
+{
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal" @onclick:stopPropagation="true">
+        <div class="modal-header">
+            <h2>
+                @if (isEditMode)
+                {
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+                        <path d="m15 5 4 4"></path>
+                    </svg>
+                    <span>Edit Kennel</span>
+                }
+                else
+                {
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 5v14"></path>
+                        <path d="M5 12h14"></path>
+                    </svg>
+                    <span>Add New Kennel</span>
+                }
+            </h2>
+            <button class="modal-close" @onclick="CloseModal">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 6 6 18"></path>
+                    <path d="m6 6 12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <EditForm Model="@kennelForm" OnValidSubmit="SaveKennel">
+                <DataAnnotationsValidator />
+                
+                <div class="form-group">
+                    <label>Kennel Name</label>
+                    <InputText class="form-input" @bind-Value="kennelForm.Name" placeholder="Kennel A, Suite 101..." />
+                    <ValidationMessage For="@(() => kennelForm.Name)" />
+                </div>
+
+                <div class="form-group">
+                    <label>Size</label>
+                    <select class="form-input" @bind="kennelForm.Size">
+                        <option value="">Select size...</option>
+                        <option value="Small">Small (up to 15 lbs)</option>
+                        <option value="Medium">Medium (15-40 lbs)</option>
+                        <option value="Large">Large (40-80 lbs)</option>
+                        <option value="Extra Large">Extra Large (80+ lbs)</option>
+                    </select>
+                    <ValidationMessage For="@(() => kennelForm.Size)" />
+                </div>
+
+                <div class="form-group">
+                    <label>Price Per Day ($)</label>
+                    <InputNumber class="form-input" @bind-Value="kennelForm.PricePerDay" placeholder="50.00" />
+                    <ValidationMessage For="@(() => kennelForm.PricePerDay)" />
+                    <span class="form-hint">Recommended: Small $30-40, Medium $50-60, Large $70-80, XL $90-100</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <InputCheckbox @bind-Value="kennelForm.IsAvailable" />
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">Available for booking</span>
+                    </label>
+                </div>
+
+                @if (modalErrorMessage != null)
+                {
+                    <div class="form-error">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="m15 9-6 6"></path>
+                            <path d="m9 9 6 6"></path>
+                        </svg>
+                        <span>@modalErrorMessage</span>
+                    </div>
+                }
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" @onclick="CloseModal">Cancel</button>
+                    <button type="submit" class="btn-primary" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="btn-spinner"></span>
+                        }
+                        <span>@(isEditMode ? "Update" : "Create") Kennel</span>
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+        </div>
+    </div>
+}
+
+<style>
+    @@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Quicksand:wght@500;600;700&display=swap');
+
+    .kennels-page {
+        --charcoal: #2D3436;
+        --gray-dark: #4A5568;
+        --gray: #636E72;
+        --gray-light: #A0AEC0;
+        --gray-lighter: #E2E8F0;
+        --gray-lightest: #F7FAFC;
+        --white: #FFFFFF;
+        --success: #48BB78;
+        --success-light: #C6F6D5;
+        --danger: #E53E3E;
+        --danger-light: #FED7D7;
+        --warning-light: #FEFCBF;
+        --info-light: #BEE3F8;
+        --shadow: 0 4px 12px rgba(45, 52, 54, 0.08);
+        --shadow-md: 0 8px 24px rgba(45, 52, 54, 0.12);
+        --radius: 12px;
+        --radius-md: 16px;
+        --radius-lg: 20px;
+
+        max-width: 1200px;
+        margin: 0 auto;
+        font-family: 'Nunito', sans-serif;
+    }
+
+    /* Header */
+    .page-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .header-text h1 {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        margin: 0 0 0.25rem 0;
+    }
+
+    .header-text p {
+        font-size: 0.9375rem;
+        color: var(--gray);
+        margin: 0;
+    }
+
+    .btn-add {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.25rem;
+        background: var(--charcoal);
+        color: var(--white);
+        font-family: 'Nunito', sans-serif;
+        font-weight: 700;
+        font-size: 0.875rem;
+        border: none;
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-add:hover {
+        background: var(--gray-dark);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    /* Loading & Error */
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 4rem 2rem;
+        background: var(--white);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow);
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--gray-lighter);
+        border-top-color: var(--charcoal);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .loading-state p {
+        margin-top: 1rem;
+        color: var(--gray);
+        font-weight: 600;
+    }
+
+    .error-alert {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+        background: var(--danger-light);
+        border-radius: var(--radius);
+        margin-bottom: 1.5rem;
+        color: #C53030;
+        font-weight: 600;
+    }
+
+    .error-alert > span {
+        flex: 1;
+    }
+
+    .alert-close {
+        background: none;
+        border: none;
+        padding: 0.25rem;
+        cursor: pointer;
+        color: #C53030;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+    }
+
+    .alert-close:hover {
+        opacity: 1;
+    }
+
+    /* Stats Section */
+    .stats-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+    }
+
+    .stat-card {
+        background: var(--white);
+        border-radius: var(--radius-md);
+        padding: 1.25rem;
+        box-shadow: var(--shadow);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        border: 1px solid var(--gray-lighter);
+        transition: all 0.2s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .stat-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: var(--radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .stat-icon.available {
+        background: var(--success-light);
+        color: #276749;
+    }
+
+    .stat-icon.occupied {
+        background: var(--danger-light);
+        color: #C53030;
+    }
+
+    .stat-icon.total {
+        background: var(--gray-lightest);
+        color: var(--charcoal);
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .stat-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .stat-value {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        line-height: 1.1;
+    }
+
+    .stat-label {
+        font-size: 0.8125rem;
+        color: var(--gray);
+        font-weight: 600;
+    }
+
+    /* Filters */
+    .filters-section {
+        background: var(--white);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        box-shadow: var(--shadow);
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--gray-lighter);
+    }
+
+    .filters-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .filter-group label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--gray);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .input-with-icon {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .input-with-icon svg {
+        position: absolute;
+        left: 1rem;
+        color: var(--gray-light);
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .input-with-icon input {
+        padding-left: 2.75rem !important;
+    }
+
+    .filter-group input,
+    .filter-group select {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        font-family: 'Nunito', sans-serif;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--charcoal);
+        background: var(--gray-lightest);
+        border: 1px solid var(--gray-lighter);
+        border-radius: var(--radius);
+        transition: all 0.2s ease;
+    }
+
+    .filter-group input:focus,
+    .filter-group select:focus {
+        outline: none;
+        border-color: var(--charcoal);
+        background: var(--white);
+    }
+
+    .filter-group input::placeholder {
+        color: var(--gray-light);
+    }
+
+    .filters-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--gray-lighter);
+    }
+
+    .btn-clear {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.875rem;
+        background: var(--gray-lightest);
+        color: var(--gray-dark);
+        font-family: 'Nunito', sans-serif;
+        font-weight: 600;
+        font-size: 0.8125rem;
+        border: 1px solid var(--gray-lighter);
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-clear:hover {
+        background: var(--white);
+        border-color: var(--charcoal);
+    }
+
+    .results-count {
+        font-size: 0.8125rem;
+        color: var(--gray);
+        font-weight: 600;
+    }
+
+    /* Kennels Grid */
+    .kennels-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+    }
+
+    .kennel-card {
+        background: var(--white);
+        border-radius: var(--radius-md);
+        padding: 1.5rem;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--gray-lighter);
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .kennel-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .kennel-card.is-available {
+        border-left: 4px solid var(--success);
+    }
+
+    .kennel-card.is-occupied {
+        border-left: 4px solid var(--danger);
+    }
+
+    .kennel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1.25rem;
+        gap: 0.75rem;
+    }
+
+    .kennel-title {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .kennel-icon {
+        width: 44px;
+        height: 44px;
+        background: var(--gray-lightest);
+        border-radius: var(--radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-lighter);
+        color: var(--gray);
+        flex-shrink: 0;
+    }
+
+    .kennel-name-wrap h3 {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 1.0625rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        margin: 0 0 0.125rem 0;
+    }
+
+    .kennel-id {
+        font-size: 0.75rem;
+        color: var(--gray-light);
+        font-weight: 600;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.375rem 0.75rem;
+        border-radius: 100px;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        flex-shrink: 0;
+    }
+
+    .status-badge.available {
+        background: var(--success-light);
+        color: #276749;
+    }
+
+    .status-badge.occupied {
+        background: var(--danger-light);
+        color: #C53030;
+    }
+
+    .kennel-details {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--gray-lighter);
+    }
+
+    .detail-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .detail-label {
+        font-size: 0.8125rem;
+        color: var(--gray);
+        font-weight: 600;
+    }
+
+    .detail-value {
+        font-size: 0.875rem;
+        color: var(--charcoal);
+        font-weight: 700;
+    }
+
+    .detail-value.price {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 1.125rem;
+    }
+
+    .size-badge {
+        display: inline-flex;
+        padding: 0.25rem 0.625rem;
+        border-radius: 100px;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .size-small { background: var(--success-light); color: #276749; }
+    .size-medium { background: var(--info-light); color: #2B6CB0; }
+    .size-large { background: var(--warning-light); color: #975A16; }
+    .size-extra-large { background: var(--danger-light); color: #C53030; }
+
+    .kennel-actions {
+        display: flex;
+        gap: 0.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--gray-lighter);
+    }
+
+    .btn-action {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.375rem;
+        padding: 0.625rem 0.75rem;
+        font-family: 'Nunito', sans-serif;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        background: var(--gray-lightest);
+        border: 1px solid var(--gray-lighter);
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: var(--gray-dark);
+    }
+
+    .btn-edit:hover {
+        background: var(--charcoal);
+        border-color: var(--charcoal);
+        color: var(--white);
+    }
+
+    .btn-delete:hover {
+        background: var(--danger);
+        border-color: var(--danger);
+        color: var(--white);
+    }
+
+    /* Empty State */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 4rem 2rem;
+        background: var(--white);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow);
+        border: 1px solid var(--gray-lighter);
+        text-align: center;
+    }
+
+    .empty-icon {
+        width: 100px;
+        height: 100px;
+        background: var(--gray-lightest);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--gray-lighter);
+        color: var(--gray-light);
+    }
+
+    .empty-state h3 {
+        font-family: 'Quicksand', sans-serif;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        margin: 0 0 0.5rem 0;
+    }
+
+    .empty-state p {
+        font-size: 0.9375rem;
+        color: var(--gray);
+        margin: 0 0 1.5rem 0;
+    }
+
+    /* Modal */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .modal {
+        position: relative;
+        width: 100%;
+        max-width: 480px;
+        max-height: calc(100vh - 2rem);
+        background: #FFFFFF;
+        border-radius: var(--radius-lg);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--gray-lighter);
+        background: #FFFFFF;
+        flex-shrink: 0;
+    }
+
+    .modal-header h2 {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-family: 'Quicksand', sans-serif;
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--charcoal);
+        margin: 0;
+        white-space: nowrap;
+    }
+
+    .modal-header h2 svg {
+        width: 20px;
+        height: 20px;
+        min-width: 20px;
+        min-height: 20px;
+        color: var(--gray);
+        flex-shrink: 0;
+    }
+
+    .modal-close {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--gray-lightest);
+        border: none;
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+        color: var(--gray);
+    }
+
+    .modal-close:hover {
+        background: var(--gray-lighter);
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+        overflow-y: auto;
+        background: #FFFFFF;
+    }
+
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+
+    .form-group > label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--gray);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        font-family: 'Nunito', sans-serif;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--charcoal);
+        background: var(--white);
+        border: 2px solid var(--gray-lighter);
+        border-radius: var(--radius);
+        transition: all 0.2s ease;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--charcoal);
+    }
+
+    .form-input::placeholder {
+        color: var(--gray-light);
+    }
+
+    .form-hint {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--gray-light);
+        margin-top: 0.375rem;
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .checkbox-label input {
+        display: none;
+    }
+
+    .checkbox-custom {
+        width: 22px;
+        height: 22px;
+        background: var(--white);
+        border: 2px solid var(--gray-lighter);
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+
+    .checkbox-label input:checked + .checkbox-custom {
+        background: var(--charcoal);
+        border-color: var(--charcoal);
+    }
+
+    .checkbox-label input:checked + .checkbox-custom::after {
+        content: '';
+        width: 6px;
+        height: 10px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+        margin-bottom: 2px;
+    }
+
+    .checkbox-text {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--charcoal);
+    }
+
+    .validation-message {
+        font-size: 0.8125rem;
+        color: var(--danger);
+        margin-top: 0.375rem;
+        font-weight: 600;
+    }
+
+    .form-error {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        padding: 0.875rem 1rem;
+        background: var(--danger-light);
+        border-radius: var(--radius);
+        margin-bottom: 1.25rem;
+        color: #C53030;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+    }
+
+    .btn-secondary {
+        padding: 0.75rem 1.25rem;
+        background: var(--gray-lightest);
+        color: var(--gray-dark);
+        font-family: 'Nunito', sans-serif;
+        font-weight: 700;
+        font-size: 0.875rem;
+        border: 1px solid var(--gray-lighter);
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+        background: var(--white);
+        border-color: var(--charcoal);
+    }
+
+    .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.25rem;
+        background: var(--charcoal);
+        color: #FFFFFF !important;
+        font-family: 'Nunito', sans-serif;
+        font-weight: 700;
+        font-size: 0.875rem;
+        border: none;
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary span {
+        color: #FFFFFF !important;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: var(--gray-dark);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    .btn-spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    /* Responsive */
+    @@media (max-width: 1024px) {
+        .stats-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .kennels-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .header-content {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .btn-add {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .filters-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .kennels-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .modal {
+            max-width: calc(100% - 2rem);
+        }
+    }
+</style>
+
+@code {
+    [Inject] private AuthService AuthService { get; set; } = default!;
+
+    private List<Kennel> kennels = new();
+    private List<Kennel> filteredKennels = new();
+    private bool isLoading = true;
+    private string? errorMessage;
+    private string? modalErrorMessage;
+
+    private string filterSize = "";
+    private string filterAvailability = "";
+    private string filterName = "";
+
+    private bool showModal = false;
+    private bool isEditMode = false;
+    private bool isSaving = false;
+    private KennelForm kennelForm = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadKennels();
+    }
+
+    private async Task LoadKennels()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+            kennels = await ApiService.GetAsync<List<Kennel>>("api/kennels") ?? new();
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to load kennels. Please try again.";
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        var filtered = kennels.AsEnumerable();
+
+        if (!string.IsNullOrEmpty(filterSize))
+        {
+            filtered = filtered.Where(k => k.Size == filterSize);
+        }
+
+        if (!string.IsNullOrEmpty(filterAvailability))
+        {
+            if (filterAvailability == "available")
+            {
+                filtered = filtered.Where(k => k.IsAvailable);
+            }
+            else if (filterAvailability == "occupied")
+            {
+                filtered = filtered.Where(k => !k.IsAvailable);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(filterName))
+        {
+            filtered = filtered.Where(k => k.Name.Contains(filterName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        filteredKennels = filtered.ToList();
+    }
+
+    private void ClearFilters()
+    {
+        filterSize = "";
+        filterAvailability = "";
+        filterName = "";
+        ApplyFilters();
+    }
+
+    private void OpenCreateModal()
+    {
+        isEditMode = false;
+        kennelForm = new KennelForm { IsAvailable = true };
+        modalErrorMessage = null;
+        showModal = true;
+    }
+
+    private void OpenEditModal(Kennel kennel)
+    {
+        isEditMode = true;
+        kennelForm = new KennelForm
+        {
+            Id = kennel.Id,
+            Name = kennel.Name,
+            Size = kennel.Size,
+            PricePerDay = kennel.PricePerDay,
+            IsAvailable = kennel.IsAvailable
+        };
+        modalErrorMessage = null;
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        modalErrorMessage = null;
+    }
+
+    private async Task SaveKennel()
+    {
+        try
+        {
+            isSaving = true;
+            modalErrorMessage = null;
+
+            var kennel = new Kennel
+            {
+                Id = kennelForm.Id,
+                Name = kennelForm.Name,
+                Size = kennelForm.Size,
+                PricePerDay = kennelForm.PricePerDay,
+                IsAvailable = kennelForm.IsAvailable
+            };
+
+            HttpResponseMessage response;
+            if (isEditMode)
+            {
+                response = await ApiService.PutAsync($"api/kennels/{kennel.Id}", kennel);
+            }
+            else
+            {
+                response = await ApiService.PostAsync("api/kennels", kennel);
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadKennels();
+                CloseModal();
+            }
+            else
+            {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                modalErrorMessage = $"Failed to {(isEditMode ? "update" : "create")} kennel.";
+                Console.WriteLine($"Error: {errorBody}");
+            }
+        }
+        catch (Exception ex)
+        {
+            modalErrorMessage = $"Error: {ex.Message}";
+            Console.WriteLine($"Exception: {ex}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task DeleteKennel(int id)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this kennel?"))
+        {
+            try
+            {
+                var response = await ApiService.DeleteAsync($"api/kennels/{id}");
+                if (response.IsSuccessStatusCode)
+                {
+                    await LoadKennels();
+                }
+                else
+                {
+                    errorMessage = "Failed to delete kennel.";
+                }
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error deleting kennel: {ex.Message}";
+            }
+        }
+    }
+
+    public class KennelForm
+    {
+        public int Id { get; set; }
+
+        [Required(ErrorMessage = "Kennel name is required")]
+        [StringLength(50, ErrorMessage = "Name must be less than 50 characters")]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Size is required")]
+        public string Size { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Price per day is required")]
+        [Range(0.01, 10000, ErrorMessage = "Price must be between $0.01 and $10,000")]
+        public decimal PricePerDay { get; set; }
+
+        public bool IsAvailable { get; set; } = true;
+    }
+}
