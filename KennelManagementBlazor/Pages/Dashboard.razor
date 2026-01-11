@@ -175,9 +175,10 @@
                                     <span>Status</span>
                                 </div>
                                 @foreach (var booking in recentBookings.Take(5))
-                                {
-                                    <div class="table-row">
-                                        <span class="cell-primary">@booking.DogId</span>
+{
+    <div class="table-row">
+                  <span class="cell-primary">@GetDogName(booking.DogId)</span>
+        <span>@GetKennelName(booking.KennelId)</span>
                                         <span>@booking.KennelId</span>
                                         <span>@booking.CheckInDate.ToString("MMM d")</span>
                                         <span>@booking.CheckOutDate.ToString("MMM d")</span>
@@ -1034,12 +1035,30 @@
         }
     }
 
+
+private List<Dog> dogs = new();
+
+private string GetDogName(int dogId)
+{
+    var dog = dogs.FirstOrDefault(d => d.Id == dogId);
+    return dog?.Name ?? $"Dog #{dogId}";
+}
+
+private string GetKennelName(int kennelId)
+{
+    var kennel = kennels.FirstOrDefault(k => k.Id == kennelId);
+    return kennel?.Name ?? $"Kennel #{kennelId}";
+}
+
+
+
+
     private async Task LoadDashboardData()
     {
         try
         {
-            var dogs = await ApiService.GetAsync<List<Dog>>("api/dogs");
-            totalDogs = dogs?.Count ?? 0;
+            dogs = await ApiService.GetAsync<List<Dog>>("api/dogs") ?? new();
+totalDogs = dogs.Count;
 
             kennels = await ApiService.GetAsync<List<Kennel>>("api/kennels") ?? new();
             availableKennels = kennels.Count(k => k.IsAvailable);
